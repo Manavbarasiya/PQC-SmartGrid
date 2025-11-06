@@ -1,0 +1,9 @@
+Metric,ECC (Phase 2),PQC (Phase 3)
+Simulated Handshake Time (ms),40.49999999999994,40.49999999999994
+Client Key Exchange CPU Time (ms),0.06781000010959298,0.8
+Server Key Exchange CPU Time (ms),0.20758000027853055,0.6
+Server Signature Generation Time (ms),0.2938899997388855,2.4999999999999996
+Client Signature Verification Time (ms),0.20015999980382004,0.5000000000000001
+Public Key Size (bytes),32.0,1184.0
+Ciphertext / Shared Secret Size (bytes),32.0,1088.0
+Signature Size (bytes),64.0,2700.0
