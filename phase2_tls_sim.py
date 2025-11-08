@@ -70,17 +70,12 @@ class UtilityServer:
         t1 = time.perf_counter()
         cpu_server_shared = t1 - t0
 
-        # sign the handshake transcript (client_pub || server_pub) with Ed25519
         to_sign = client_pub_bytes + server_pub_bytes
         t0 = time.perf_counter()
         signature = self.sign_priv.sign(to_sign)
         t1 = time.perf_counter()
         cpu_server_sign = t1 - t0
-
-        # simulate sending ServerHello back to client (another network latency)
-        # we call the client's receive_server_hello via a callback after network delay
         def deliver():
-            # SimPy process to deliver the message to client
             yield self.env.timeout(self.network_latency)
             # schedule client's receive
             callback(server_pub_bytes, signature, cpu_server_sign, cpu_server_shared)
@@ -93,7 +88,6 @@ class SmartMeterClient:
         self.client_id = client_id
         self.server = server
         self.start_time = start_time
-        # session ephemeral keys will be generated during handshake
         self.ephemeral_priv = None
         self.ephemeral_pub_bytes = None
 
@@ -102,24 +96,19 @@ class SmartMeterClient:
         self.env.process(self._handshake_process(results_list))
 
     def _handshake_process(self, results_list: List[SessionMetric]):
-        # wait until scheduled start
         yield self.env.timeout(self.start_time)
         t_sim_start = self.env.now
-        # create ephemeral key and send ClientHello
         self.ephemeral_priv = x25519.X25519PrivateKey.generate()
         self.ephemeral_pub = self.ephemeral_priv.public_key()
         client_pub_bytes = self.ephemeral_pub.public_bytes(encoding=serialization.Encoding.Raw,
                                                           format=serialization.PublicFormat.Raw)
         self.ephemeral_pub_bytes = client_pub_bytes
         client_pub_size = len(client_pub_bytes)
-
-        # Define a callback to be invoked when ServerHello is delivered
-        # We capture variables by reference via closure; use simpy events to resume
         handshake_completed = {'done': False, 'sim_end': None, 'cpu_server_sign': 0.0, 'cpu_server_shared': 0.0,
                                'server_pub_bytes': b'', 'signature': b''}
 
         def server_response_callback(server_pub_bytes, signature, cpu_server_sign, cpu_server_shared):
-            # This callback is called inside a SimPy process context (deliver())
+
             handshake_completed['server_pub_bytes'] = server_pub_bytes
             handshake_completed['signature'] = signature
             handshake_completed['cpu_server_sign'] = cpu_server_sign

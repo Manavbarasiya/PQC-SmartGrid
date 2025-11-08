@@ -26,28 +26,22 @@ from typing import List
 import simpy
 import pandas as pd
 
-# Try to import oqs; if not available we will emulate PQC.
 try:
     import oqs
     HAS_OQS = True
 except Exception:
     HAS_OQS = False
 
-# Crypto sizes / mock timing defaults (conservative estimates for simulation)
-# Real sizes (approx):
-KYBER768_PK_BYTES = 1184   # Kyber-768 public key (approx)
-KYBER768_CT_BYTES = 1088   # Kyber-768 ciphertext (approx)
-DILITHIUM3_SIG_BYTES = 2700  # rough estimate for Dilithium3 signature (varies)
-DILITHIUM3_PK_BYTES = 1472  # rough estimate for Dilithium3 public key
-
-# Emulated CPU timings (seconds) when liboqs is not available.
-# These are conservative placeholders — you should re-run with real liboqs to measure actual timings.
-EMU_KEM_ENCAP_SEC = 0.0008   # 0.8 ms for KEM encapsulation (client)
-EMU_KEM_DECAP_SEC = 0.0006   # 0.6 ms for KEM decapsulation (server)
-EMU_SIG_SIGN_SEC = 0.0025    # 2.5 ms to sign with Dilithium (meter)
-EMU_SIG_VERIFY_SEC = 0.0005  # 0.5 ms to verify with Dilithium (server)
-
+KYBER768_PK_BYTES = 1184   
+KYBER768_CT_BYTES = 1088  
+DILITHIUM3_SIG_BYTES = 2700  
+DILITHIUM3_PK_BYTES = 1472  
+EMU_KEM_ENCAP_SEC = 0.0008   
+EMU_KEM_DECAP_SEC = 0.0006 
+EMU_SIG_SIGN_SEC = 0.0025   
+EMU_SIG_VERIFY_SEC = 0.0005  
 RESULT_CSV = "phase3_pqc_results.csv"
+
 
 @dataclass
 class PQCSessionMetric:
@@ -68,15 +62,10 @@ class PQCServer:
         self.processing_delay = processing_delay
         self.has_oqs = HAS_OQS
         if self.has_oqs:
-            # Initialize oqs objects for KEM and Signature
-            # We'll create a persistent server keypair for KEM and a signing keypair for signatures.
             try:
                 self.kem_alg = "Kyber768"
                 self.sig_alg = "Dilithium3"
-                # Create server KEM keypair - using oqs API if available
                 self.kem = oqs.KeyEncapsulation(self.kem_alg)
-                # generate_keypair() is expected to return a private key; server will expose a public key for clients
-                # We wrap calls in try/except because oqs-python versions differ. If calls fail, fallback to emulation.
                 try:
                     self.kem_pub = self.kem.generate_keypair()
                     # If generate_keypair returned (pk, sk) adjust accordingly
@@ -89,18 +78,15 @@ class PQCServer:
                         except Exception:
                             self.kem_sk = None
                 except Exception:
-                    # fallback: try export_public_key
                     try:
                         self.kem_pub = self.kem.generate_keypair()
                     except Exception:
                         self.kem_pub = b"server_kem_pub"
                         self.kem_sk = None
-                # Signature keypair
                 self.sig = oqs.Signature(self.sig_alg)
                 try:
                     self.sig_pub, self.sig_priv = self.sig.generate_keypair()
                 except Exception:
-                    # fallback if API differs
                     try:
                         self.sig_priv = self.sig.generate_keypair()
                         self.sig_pub = self.sig.export_public_key()
@@ -108,7 +94,6 @@ class PQCServer:
                         self.sig_pub = b"server_sig_pub"
                         self.sig_priv = None
             except Exception:
-                # If any oqs operation fails, mark as no oqs and fall back to emulation
                 self.has_oqs = False
         else:
             self.kem = None
