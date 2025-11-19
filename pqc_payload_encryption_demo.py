@@ -4,6 +4,7 @@ import base64
 import hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+
 try:
     import oqs
     pqc_available = True
@@ -11,7 +12,6 @@ except ImportError:
     pqc_available = False
     print("⚠️ oqs-python not installed. Using emulated PQC shared secret.")
 
-# Step 1: Generate PQC key pair and perform KEM
 if pqc_available:
     with oqs.KeyEncapsulation("Kyber1024") as server:
         public_key = server.generate_keypair()
@@ -19,7 +19,6 @@ if pqc_available:
             ciphertext, shared_secret_client = client.encap_secret(public_key)
         shared_secret_server = server.decap_secret(ciphertext)
 else:
-    # Emulate with shared secret for demo
     ciphertext = b"fakecipher"
     shared_secret_client = shared_secret_server = hashlib.sha256(b"kyber").digest()
 
@@ -42,7 +41,7 @@ nonce = os.urandom(12)
 aesgcm = AESGCM(key)
 ciphertext_enc = aesgcm.encrypt(nonce, plaintext, None)
 
-# Step 5: Decrypt
+
 decrypted = aesgcm.decrypt(nonce, ciphertext_enc, None)
 decrypted_data = json.loads(decrypted.decode())
 
